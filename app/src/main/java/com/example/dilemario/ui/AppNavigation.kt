@@ -1,80 +1,86 @@
 package com.example.dilemario.ui
 
-import androidx.compose.runtime.Composable
+import android.util.Base64
+import android.util.Log
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.dilemario.ui.screens.AdminDilemasScreen
-import com.example.dilemario.ui.screens.ConfigScreen
-import com.example.dilemario.ui.screens.CreateAccountScreen
-import com.example.dilemario.ui.screens.CreateDilemmaScreen
-import com.example.dilemario.ui.screens.DilemaPagerScreen
-import com.example.dilemario.ui.screens.SplashScreen
-import com.example.dilemario.ui.screens.FeedScreen
-import com.example.dilemario.ui.screens.DetailScreen
-import com.example.dilemario.ui.screens.EditDilemmaScreen
-import com.example.dilemario.ui.screens.LoginScreen
-import com.example.dilemario.ui.screens.ProfileScreen
+import com.example.dilemario.ui.screens.*
+import com.example.dilemario.data.UserPreferences
+import kotlinx.coroutines.flow.firstOrNull
+import org.json.JSONObject
 
 @Composable
 fun AppNavigation(navController: NavHostController) {
-    NavHost(
-        navController = navController,
-        startDestination = "adminDilemas"   // ⭐ Ahora inicia directamente en el pager tipo TikTok
-    ) {
+    val context = LocalContext.current
+    val prefs = remember { UserPreferences(context) }
 
-        // ⭐ FEED TIPO TIKTOK CON SWIPE HACIA ARRIBA / ABAJO
+    // Estado para token y userId
+    var tokenReceived by remember { mutableStateOf<String?>(null) }
+    var userId by remember { mutableStateOf<Int?>(null) }
 
-        composable("config") {
-            ConfigScreen(navController)
+    // Decodificar JWT y extraer id cuando token cambie
+    LaunchedEffect(tokenReceived) {
+        tokenReceived?.let {
+            try {
+                val parts = it.split(".")
+                if (parts.size >= 2) {
+                    val payload = parts[1]
+                    val decoded = String(Base64.decode(payload, Base64.URL_SAFE))
+                    val json = JSONObject(decoded)
+                    userId = json.optInt("id", -1)
+                    Log.d("AppNavigation", "User ID extraído del token: $userId")
+
+                    // Establecer token en Retrofit
+                    RetrofitClient.setToken(it)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                userId = -1
+            }
         }
+    }
 
-        composable("adminDilemas") {
-            AdminDilemasScreen(navController)
-        }
-
-        composable("editDilemma/{id}") { backStackEntry ->
-            val dilemaId = backStackEntry.arguments?.getString("id")?.toIntOrNull() ?: 0
-            EditDilemmaScreen(navController = navController, dilemaId = dilemaId)
-        }
-
-
-        composable("pager") {
-            DilemaPagerScreen(navController)
-        }
-
-        composable("splash") {
-            SplashScreen(navController)
-        }
-
-        composable("crearDilema") {
-            CreateDilemmaScreen(navController)
-        }
-
-        composable("feed") {
-            FeedScreen(navController)
-        }
-
-        composable("detail/{id}") { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("id")?.toIntOrNull() ?: 0
-            DetailScreen(navController, id)
-        }
-
-        composable("crearCuenta") {
-            CreateAccountScreen(
-                onRegister = { /* lógica */ },
-                onBack = { navController.popBackStack() }
-            )
-        }
+    NavHost(navController = navController, startDestination = "login") {
 
         composable("login") {
             LoginScreen(
-                onLogin = { /* validar login */ },
+                onLoginSuccess = { newToken ->
+                    tokenReceived = newToken // asignamos token recibido
+                    navController.navigate("pager") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
                 onGoToRegister = { navController.navigate("crearCuenta") }
             )
         }
 
-        composable("profile") { ProfileScreen(navController) }
+        composable("pager") {
+            userId?.let { id ->
+                Log.d("AppNavigation", "Navegando a Pager con ID: $id")
+                DilemaPagerScreen(navController, userId = id)
+            }
+        }
 
+        composable("crearCuenta") {
+            CreateAccountScreen(onRegister = {}, onBack = { navController.popBackStack() })
+        }
+
+        composable("config") { ConfigScreen(navController) }
+        composable("adminDilemas") { AdminDilemasScreen(navController) }
+        composable("editDilemma/{id}") { backStackEntry ->
+            val dilemaId = backStackEntry.arguments?.getString("id")?.toIntOrNull() ?: 0
+            EditDilemmaScreen(navController, dilemaId)
+        }
+        composable("splash") { SplashScreen(navController) }
+        composable("crearDilema") { CreateDilemmaScreen(navController) }
+        composable("feed") { FeedScreen(navController) }
+        composable("detail/{id}") { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id")?.toIntOrNull() ?: 0
+            DetailScreen(navController, id)
+        }
+        composable("profile") { ProfileScreen(navController) }
     }
 }

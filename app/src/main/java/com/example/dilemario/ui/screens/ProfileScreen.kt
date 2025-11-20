@@ -5,25 +5,36 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.dilemario.R
 import com.example.dilemario.ui.components.BottomNavigationBar
 
 @Composable
 fun ProfileScreen(navController: NavController) {
+
+    val context = LocalContext.current
+    val viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory(context))
+
+    val name by viewModel.name.collectAsState()
+    val email by viewModel.email.collectAsState()
+    val age by viewModel.age.collectAsState()
+    val country by viewModel.country.collectAsState()
+
     Scaffold(
-        containerColor = Color(0xFF202020), // Fondo oscuro
-        bottomBar = { BottomNavigationBar(navController) } // Mantener la navegación inferior
+        containerColor = Color(0xFF202020),
+        bottomBar = { BottomNavigationBar(navController) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -32,9 +43,9 @@ fun ProfileScreen(navController: NavController) {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Foto de perfil
+
             Image(
-                painter = painterResource(id = R.drawable.profile_placeholder), // Imagen local o usa Coil
+                painter = painterResource(id = R.drawable.profile_placeholder),
                 contentDescription = "Foto de perfil",
                 modifier = Modifier
                     .size(120.dp)
@@ -45,21 +56,47 @@ fun ProfileScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Información del usuario
-            Text(text = "Nicolás Carvajal", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text(text = "correo@ejemplo.com", fontSize = 16.sp, color = Color.LightGray)
-            Text(text = "Edad: 21", fontSize = 16.sp, color = Color.LightGray)
+            // 🔥 DATOS REALES DEL USUARIO
+            Text(
+                text = name.ifEmpty { "Cargando..." },
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Text(
+                text = email,
+                fontSize = 16.sp,
+                color = Color.LightGray
+            )
+
+            Text(
+                text = "Edad: $age",
+                fontSize = 16.sp,
+                color = Color.LightGray
+            )
+
+            Text(
+                text = "País: $country",
+                fontSize = 16.sp,
+                color = Color.LightGray
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Estadísticas
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF303030)) // Card oscuro
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF303030))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "Estadísticas", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        text = "Estadísticas",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
+
                     Text(text = "Dilemas contestados: 42", color = Color.LightGray)
                     Text(text = "Dilemas creados: 5", color = Color.LightGray)
                     Text(text = "Nivel: Intermedio", color = Color.LightGray)
